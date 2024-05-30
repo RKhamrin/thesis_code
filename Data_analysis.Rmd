@@ -1,0 +1,178 @@
+---
+title: "Data_analysis"
+output: html_notebook
+---
+Подгрузка данных 
+```{r}
+data_diplom <- read.csv("C:\\Users\\hamri\\Downloads\\final_data_diplom.csv")
+```
+
+Первичный запуск модели 
+```{r}
+model <- lm(sentence_period_whole_null ~ gender_judge_bin + soft_bin + hard_bin + recidivism_type_1 + recidivism_type_2 + recidivism_type_3 + recidivism_type_4 + guilty_plea_1 + guilty_plea_2 + child_bin + likes_cnt + views_cnt + comments_cnt + reposts_cnt + posts_count + posts_bin, data = data_diplom)
+```
+
+Отчет модели
+```{r}
+summary(model)
+```
+VIF модели
+```{r}
+library(car)
+vif(model)
+```
+Отделение переменных, связанных со статистиками постов, для проведения факторного анализа
+```{r}
+media_cols_all = subset(data_diplom, select=c(likes_cnt, comments_cnt, views_cnt, reposts_cnt, posts_count))
+```
+
+Использование критерия КМО и теста Бартлетта для оценки применимости факторного анализа к отобранным переменным 
+```{r}
+KMO(media_cols_all)
+```
+```{r}
+bartlett.test(media_cols_all)
+```
+Проведение факторного анализа методом главных компонент
+```{r}
+library(psych)
+fa_result <- principal(media_cols_all, nfactors = 1, rotate = "none")
+```
+Распределение остатков
+```{r}
+fa_result[['residual']]
+```
+Результаты проведения факторного анализа
+```{r}
+fa_result
+```
+Отбор только релевантных колонок для получения высокого процента объясненной дисперсии по каждой переменной
+```{r}
+media_cols = subset(data_diplom, select=c(likes_cnt, comments_cnt, views_cnt, reposts_cnt))
+```
+
+```{r}
+KMO(media_cols)
+```
+Использование критерия КМО и теста Бартлетта для оценки применимости факторного анализа к отобранным переменным 
+
+```{r}
+bartlett.test(media_cols)
+```
+Проведение факторного анализа методом главных компонент
+```{r}
+fa_result <- principal(media_cols, nfactors = 1, rotate = "none")
+```
+Распределение остатков
+```{r}
+fa_result[['residual']]
+```
+Результаты проведенного факторного анализа
+```{r}
+fa_result
+```
+
+
+```{r}
+data_diplom$media_factor <- fa_result$scores[,1]
+```
+
+Использование новой факторной переменной в модели 
+```{r}
+model <- lm(sentence_period_whole_null ~ gender_judge_bin + soft_bin + hard_bin + recidivism_type_1 + recidivism_type_2 + recidivism_type_3 + recidivism_type_4 + guilty_plea_1 + guilty_plea_2 + child_bin + media_factor + posts_count + posts_bin, data = data_diplom)
+```
+Отчет модели
+```{r}
+summary(model)
+```
+VIF модели
+```{r}
+vif(model)
+```
+Итоговая модель с учетом исключения незначимых переменных
+```{r}
+model <- lm(sentence_period_whole_null ~  hard_bin + recidivism_type_2 + recidivism_type_3 + recidivism_type_4 + guilty_plea_2 + posts_bin, data = data_diplom)
+```
+Отчет модели
+```{r}
+summary(model)
+```
+VIF модели
+```{r}
+vif(model)
+```
+Проведение теста для оценки гетероскедастичности 
+```{r}
+library(lmtest)
+gqtest(model)
+```
+Проведение теста Шапиро-Уилка для оценки нормального распределения остатков
+```{r}
+shapiro.test(model$residuals)
+```
+Отбор уголовных дел, в которых судья -- представитель женского пола
+```{r}
+data_diplom_female <- data_diplom[data_diplom$gender_judge_bin == 0, ]
+```
+Первичный запуск модели
+```{r}
+model <- lm(sentence_period_whole_null ~ soft_bin + hard_bin + recidivism_type_1 + recidivism_type_2 + recidivism_type_3 + recidivism_type_4 + guilty_plea_1 + guilty_plea_2 + child_bin + posts_bin, data = data_diplom_female)
+```
+Отчет модели
+```{r}
+summary(model)
+```
+VIF модели
+```{r}
+vif(model)
+```
+Итоговая модель после исключения незначимых переменных
+```{r}
+model <- lm(sentence_period_whole_null ~ hard_bin + recidivism_type_3 + recidivism_type_4 + guilty_plea_2 + posts_bin, data = data_diplom_female)
+
+```
+
+Отчет модели
+```{r}
+summary(model)
+```
+Отбор уголовных дел, в которых судья -- представитель мужского пола 
+```{r}
+data_diplom_male <- data_diplom[data_diplom$gender_judge_bin == 1, ]
+```
+Первичный прогон модели на всех предикторах
+```{r}
+model <- lm(sentence_period_whole_null ~ soft_bin + hard_bin + recidivism_type_1 + recidivism_type_2 + recidivism_type_3 + recidivism_type_4 + guilty_plea_1 + guilty_plea_2 + child_bin + posts_bin, data = data_diplom_male)
+```
+Отчет модели
+```{r}
+summary(model)
+```
+VIF модели
+```{r}
+vif(model)
+```
+Итоговая модель после исключения незначимых переменных 
+```{r}
+model <- lm(sentence_period_whole_null ~ hard_bin + recidivism_type_2 + recidivism_type_3 + recidivism_type_4 + posts_bin, data = data_diplom_male)
+```
+Отчет модели
+```{r}
+summary(model)
+```
+Jписательные статистики используемых в модели переменных
+```{r}
+rel_cols <- subset(data_diplom, select=c(gender_judge_bin, soft_bin, hard_bin, recidivism_type_1, recidivism_type_2, recidivism_type_3, recidivism_type_4, guilty_plea_1, guilty_plea_2, child_bin, media_factor, likes_cnt, comments_cnt, views_cnt, reposts_cnt, posts_count, posts_bin))
+summary(rel_cols)
+```
+Jписательные статистики используемых в модели переменных
+```{r}
+rel_cols <- subset(data_diplom_female, select=c(gender_judge_bin, soft_bin, hard_bin, recidivism_type_1, recidivism_type_2, recidivism_type_3, recidivism_type_4, guilty_plea_1, guilty_plea_2, child_bin, likes_cnt, comments_cnt, views_cnt, reposts_cnt, posts_count, posts_bin))
+summary(rel_cols)
+```
+Jписательные статистики используемых в модели переменных
+```{r}
+rel_cols <- subset(data_diplom_male, select=c(gender_judge_bin, soft_bin, hard_bin, recidivism_type_1, recidivism_type_2, recidivism_type_3, recidivism_type_4, guilty_plea_1, guilty_plea_2, child_bin, likes_cnt, comments_cnt, views_cnt, reposts_cnt, posts_count, posts_bin))
+summary(rel_cols)
+```
+
